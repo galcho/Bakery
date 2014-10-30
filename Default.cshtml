@@ -1,12 +1,14 @@
-﻿@{
+﻿@using System.Configuration
+@{
     Page.Title = "Home";
 
     var db = Database.Open("bakery");
     var products = db.Query("SELECT * FROM PRODUCTS").ToList();
     var featured = products[new Random().Next(products.Count)];
+    var titleColor = ConfigurationSettings.AppSettings["TitleColor"] ?? "#696969";
 }
 
-<h1>Welcome to Fourth Coffee!</h1>
+<h1 style="color: @titleColor">Welcome to Fourth Coffee!</h1>
 
 <div id="featuredProduct">
     <img alt="Featured Product" src="~/Images/Products/@featured.ImageName"/>
