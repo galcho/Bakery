@@ -1,0 +1,139 @@
+{
+  "$schema":"http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion":"1.0.0.0",
+  "parameters":{
+    "siteName":{
+      "type":"string"
+    },
+    "hostingPlanName":{
+      "type":"string"
+    },
+    "siteLocation":{
+      "type":"string"
+    },
+    "bakeryDatabase":{
+      "type":"string",
+      "defaultValue":""
+    },
+    "bakeryDatabaseStaging":{
+      "type":"string",
+      "defaultValue":""
+    },
+    "sku":{
+      "type":"string",
+      "allowedValues":[
+        "Free",
+        "Shared",
+        "Basic",
+        "Standard"
+      ],
+      "defaultValue":"Free"
+    },
+    "workerSize":{
+      "type":"string",
+      "allowedValues":[
+        "0",
+        "1",
+        "2"
+      ],
+      "defaultValue":"0"
+    }
+  },
+  "resources":[
+    {
+      "apiVersion":"2015-04-01",
+      "name":"[parameters('hostingPlanName')]",
+      "type":"Microsoft.Web/serverfarms",
+      "location":"[parameters('siteLocation')]",
+      "properties":{
+        "name":"[parameters('hostingPlanName')]",
+        "sku":"[parameters('sku')]",
+        "workerSize":"[parameters('workerSize')]",
+        "numberOfWorkers":1
+      }
+    },
+    {
+      "apiVersion":"2015-04-01",
+      "name":"[parameters('siteName')]",
+      "type":"Microsoft.Web/sites",
+      "location":"[parameters('siteLocation')]",
+      "dependsOn":[
+        "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]"
+      ],
+      "properties":{
+        "serverFarmId":"[parameters('hostingPlanName')]",
+      },
+      "resources":[
+        {
+          "apiVersion":"2015-04-01",
+          "name":"web",
+          "type":"sourcecontrols",
+          "dependsOn":[
+            "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]"
+          ],
+          "properties":{
+            "RepoUrl":"https://github.com/galcho/Bakery.git",
+            "branch":"WithDb"
+          }
+        },
+        {
+              "apiVersion": "2015-08-01",
+              "name": "connectionStrings",
+              "type": "config",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]"
+              ],
+              "properties": {
+                "bakery": { "value":"[parameters('bakeryDatabase')]", "type":1 }
+              }
+        },
+        {
+          "apiVersion": "2015-08-01",
+          "name": "slotconfignames",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]"
+          ],
+          "properties": {
+            "connectionStringNames": [ "bakery" ]
+          }
+        },
+        {
+          "apiVersion": "2015-08-01",
+          "name": "Staging",
+          "type": "slots",
+          "location": "[parameters('siteLocation')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]"
+          ],
+          "properties": {
+          },
+          "resources": [
+            {
+              "apiVersion": "2015-08-01",
+              "name": "connectionStrings",
+              "type": "config",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites/Slots', parameters('siteName'), 'Staging')]"
+              ],
+              "properties": {
+                "bakery": { "value":"[parameters('bakeryDatabaseStaging')]", "type":1 }
+              }
+            },
+            {
+                "apiVersion": "2015-08-01",
+                "name": "web",
+                "type": "config",
+                "dependsOn": [
+                  "[resourceId('Microsoft.Web/Sites/Slots', parameters('siteName'), 'Staging')]"
+                ],
+                "properties": {
+                  "autoSwapSlotName": "production"
+                }
+              }
+          ]
+        }
+      ]
+    }
+  ]
+}
